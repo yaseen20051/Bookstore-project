@@ -59,19 +59,36 @@ router.post('/books', async (req, res) => {
 
 // Update book
 router.put('/books/:isbn', async (req, res) => {
+    const connection = await db.getConnection();
     try {
+        await connection.beginTransaction();
         const { title, publisher_id, publication_year, price, category, 
                 quantity_in_stock, threshold_quantity } = req.body;
         
-        await db.query(
+        await connection.query(
             'UPDATE Books SET title = ?, publisher_id = ?, publication_year = ?, price = ?, category = ?, quantity_in_stock = ?, threshold_quantity = ? WHERE ISBN = ?',
             [title, publisher_id, publication_year, price, category, quantity_in_stock, threshold_quantity, req.params.isbn]
         );
         
+        await connection.commit();
         res.json({ message: 'Book updated successfully' });
     } catch (error) {
+        await connection.rollback();
         console.error(error);
         res.status(500).json({ error: error.message });
+    } finally {
+        connection.release();
+    }
+});
+
+// Delete book
+router.delete('/books/:isbn', async (req, res) => {
+    try {
+        await db.query('DELETE FROM Books WHERE ISBN = ?', [req.params.isbn]);
+        res.json({ message: 'Book deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to delete book' });
     }
 });
 
@@ -200,6 +217,34 @@ router.get('/reports/books/:isbn/order-count', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to generate report' });
+    }
+});
+
+// Dashboard Stats
+router.get('/stats/customers', async (req, res) => {
+    try {
+        const [result] = await db.query('SELECT COUNT(*) as count FROM Customers');
+        res.json(result[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch customer stats' });
+    }
+});
+
+router.get('/stats/books', async (req, res) => {
+    try {
+        const [result] = await db.query('SELECT COUNT(*) as count FROM Books');
+        res.json(result[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch book stats' });
+    }
+});
+
+router.get('/stats/pending-orders', async (req, res) => {
+    try {
+        const [result] = await db.query("SELECT COUNT(*) as count FROM Publisher_Orders WHERE status = 'Pending'");
+        res.json(result[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch pending order stats' });
     }
 });
 

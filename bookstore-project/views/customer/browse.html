@@ -10,7 +10,12 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="#">Bookstore</a>
-            <button class="btn btn-outline-light" onclick="logout()">Logout</button>
+            <div>
+                <a href="/customer/profile.html" class="btn btn-outline-light">My Profile</a>
+                <a href="/customer/cart.html" class="btn btn-outline-light">My Cart</a>
+                <a href="/customer/orders.html" class="btn btn-outline-light">My Orders</a>
+                <button class="btn btn-outline-light" onclick="logout()">Logout</button>
+            </div>
         </div>
     </nav>
 
@@ -48,96 +53,11 @@
         <div id="booksList" class="row"></div>
     </div>
 
-    <script>
-        // Load all books on page load
-        window.onload = () => {
-            loadBooks();
-        };
+    <footer class="bg-dark text-white text-center p-3 mt-5">
+        <p>&copy; 2025 Bookstore</p>
+    </footer>
 
-        async function loadBooks() {
-            try {
-                const response = await fetch('/api/books');
-                const books = await response.json();
-                displayBooks(books);
-            } catch (error) {
-                console.error('Error loading books:', error);
-            }
-        }
-
-        async function searchBooks() {
-            const title = document.getElementById('searchTitle').value;
-            const author = document.getElementById('searchAuthor').value;
-            const category = document.getElementById('searchCategory').value;
-
-            const params = new URLSearchParams();
-            if (title) params.append('title', title);
-            if (author) params.append('author', author);
-            if (category) params.append('category', category);
-
-            try {
-                const response = await fetch(`/api/books/search?${params}`);
-                const books = await response.json();
-                displayBooks(books);
-            } catch (error) {
-                console.error('Error searching books:', error);
-            }
-        }
-
-        function displayBooks(books) {
-            const container = document.getElementById('booksList');
-            container.innerHTML = '';
-
-            books.forEach(book => {
-                const bookCard = `
-                    <div class="col-md-4 mb-4">
-                        <div class="card h-100">
-                            <div class="card-body">
-                                <h5 class="card-title">${book.title}</h5>
-                                <p class="card-text">
-                                    <strong>Author(s):</strong> ${book.authors || 'N/A'}<br>
-                                    <strong>Category:</strong> ${book.category}<br>
-                                    <strong>Price:</strong> $${book.price}<br>
-                                    <strong>Stock:</strong> ${book.quantity_in_stock}
-                                </p>
-                                <button class="btn btn-success w-100" 
-                                        onclick="addToCart('${book.ISBN}')"
-                                        ${book.quantity_in_stock === 0 ? 'disabled' : ''}>
-                                    ${book.quantity_in_stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += bookCard;
-            });
-        }
-
-        async function addToCart(isbn) {
-            try {
-                const response = await fetch('/api/cart/items', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ isbn, quantity: 1 })
-                });
-
-                if (response.ok) {
-                    alert('Book added to cart!');
-                } else {
-                    alert('Failed to add book to cart');
-                }
-            } catch (error) {
-                console.error('Error adding to cart:', error);
-            }
-        }
-
-        async function logout() {
-            try {
-                await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.href = '/login';
-            } catch (error) {
-                console.error('Logout error:', error);
-            }
-        }
-    </script>
+    <script src="/js/common.js"></script>
+    <script src="/js/customer.js"></script>
 </body>
 </html>
