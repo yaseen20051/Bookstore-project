@@ -1,7 +1,6 @@
 -- database/schema.sql
 CREATE DATABASE IF NOT EXISTS bookstore_db;
-USE bookstore_db;
-
+USE bookstore_db;        
 -- Publishers Table
 CREATE TABLE Publishers (
     publisher_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -89,8 +88,6 @@ CREATE TABLE Sales (
     customer_id INT,
     sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     total_amount DECIMAL(10,2) NOT NULL,
-    credit_card_last4 VARCHAR(4),
-    card_expiry VARCHAR(7),
     FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
 );
 
