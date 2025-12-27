@@ -53,7 +53,7 @@ exports.login = async (req, res) => {
         // Admin login with database authentication
         if (user_type === 'admin') {
             const [admins] = await db.query(
-                'SELECT * FROM Admins WHERE username = ? AND is_active = TRUE', 
+                'SELECT * FROM Admins WHERE username = ?', 
                 [username]
             );
             
@@ -68,11 +68,11 @@ exports.login = async (req, res) => {
                 return res.status(401).json({ error: 'Invalid username or password' });
             }
             
-            // Update last login
-            await db.query(
-                'UPDATE Admins SET last_login = CURRENT_TIMESTAMP WHERE admin_id = ?',
-                [admin.admin_id]
-            );
+            // // Update last login
+            // await db.query(
+            //     'UPDATE Admins SET last_login = CURRENT_TIMESTAMP WHERE admin_id = ?',
+            //     [admin.admin_id]
+            // );
             
             req.session.user = { 
                 id: admin.admin_id, 
@@ -144,18 +144,24 @@ exports.login = async (req, res) => {
 // Logout
 exports.logout = async (req, res) => {
     try {
+        // Clear cart items on logout (if customer) - don't fail logout if this fails
         if (req.session.user && req.session.user.type === 'customer') {
-            // Clear cart items on logout
-            const [cart] = await db.query(
-                'SELECT cart_id FROM Shopping_Carts WHERE customer_id = ? AND is_active = TRUE',
-                [req.session.user.id]
-            );
-            
-            if (cart.length > 0) {
-                await db.query('DELETE FROM Cart_Items WHERE cart_id = ?', [cart[0].cart_id]);
+            try {
+                const [cart] = await db.query(
+                    'SELECT cart_id FROM Shopping_Carts WHERE customer_id = ? AND is_active = TRUE',
+                    [req.session.user.id]
+                );
+                
+                if (cart.length > 0) {
+                    await db.query('DELETE FROM Cart_Items WHERE cart_id = ?', [cart[0].cart_id]);
+                }
+            } catch (cartError) {
+                // Log error but don't fail logout if cart clearing fails
+                console.error('Error clearing cart on logout:', cartError);
             }
         }
         
+        // Always destroy session, even if cart clearing failed
         req.session.destroy((err) => {
             if (err) {
                 console.error('Session destroy error:', err);
@@ -165,7 +171,10 @@ exports.logout = async (req, res) => {
         });
     } catch (error) {
         console.error('Logout error:', error);
-        res.status(500).json({ error: 'Logout failed: ' + error.message });
+        // Try to destroy session even if there was an error
+        req.session.destroy(() => {
+            res.status(500).json({ error: 'Logout failed: ' + error.message });
+        });
     }
 };
 

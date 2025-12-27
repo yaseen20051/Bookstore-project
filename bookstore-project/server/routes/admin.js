@@ -75,4 +75,7 @@ router.get('/stats/pending-orders', async (req, res) => {
     }
 });
 
+// Get all admins
+router.get('/admins', adminController.getAllAdmins);
+
 module.exports = router;

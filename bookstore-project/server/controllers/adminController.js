@@ -151,9 +151,9 @@ exports.confirmOrder = async (req, res) => {
     try {
         const { orderId } = req.params;
         
-        // Update order status (trigger will automatically update stock)
+        // Update order status and confirmation date (trigger will automatically update stock)
         const [result] = await db.query(
-            "UPDATE Publisher_Orders SET status = 'Confirmed' WHERE order_id = ? AND status = 'Pending'",
+            "UPDATE Publisher_Orders SET status = 'Confirmed', confirmation_date = CURRENT_TIMESTAMP WHERE order_id = ? AND status = 'Pending'",
             [orderId]
         );
         
@@ -392,5 +392,21 @@ exports.getLowStockBooks = async (req, res) => {
     } catch (error) {
         console.error('Low stock error:', error);
         res.status(500).json({ error: 'Failed to fetch low stock books' });
+    }
+};
+
+// Get all admins
+exports.getAllAdmins = async (req, res) => {
+    try {
+        const [admins] = await db.query(`
+            SELECT admin_id, username, email
+            FROM Admins
+            ORDER BY admin_id ASC
+        `);
+        
+        res.json(ApiResponse.success(admins));
+    } catch (error) {
+        console.error('Get all admins error:', error);
+        res.status(500).json({ error: 'Failed to fetch admins' });
     }
 };

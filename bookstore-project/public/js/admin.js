@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch('/api/admin/books', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include', // Include cookies for session authentication
                         body: JSON.stringify(formData)
                     });
     
@@ -84,7 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadPendingOrders() {
     try {
         showSpinner();
-        const response = await fetch('/api/admin/orders/pending');
+        const response = await fetch('/api/admin/orders/pending', {
+            credentials: 'include' // Include cookies for session authentication
+        });
         const orders = await response.json();
         
         const tableBody = document.getElementById('ordersTableBody');
@@ -120,7 +123,8 @@ async function confirmOrder(orderId) {
     try {
         showSpinner();
         const response = await fetch(`/api/admin/orders/${orderId}/confirm`, {
-            method: 'PUT'
+            method: 'PUT',
+            credentials: 'include' // Include cookies for session authentication
         });
 
         if (response.ok) {
@@ -142,7 +146,9 @@ async function loadPreviousMonthSales() {
     if(container){
         try {
             showSpinner();
-            const res = await fetch('/api/admin/reports/sales/previous-month');
+            const res = await fetch('/api/admin/reports/sales/previous-month', {
+                credentials: 'include' // Include cookies for session authentication
+            });
             const data = await res.json();
             container.innerHTML = `
                 <p>Total Sales: $${data.total_sales || 0}</p>
@@ -160,7 +166,9 @@ async function loadTopCustomers() {
     if(container){
         try {
             showSpinner();
-            const res = await fetch('/api/admin/reports/customers/top5');
+            const res = await fetch('/api/admin/reports/customers/top5', {
+                credentials: 'include' // Include cookies for session authentication
+            });
             const customers = await res.json();
             let html = '<ul class="list-group">';
             customers.forEach(c => {
@@ -184,7 +192,9 @@ async function loadTopBooks() {
     if(container){
         try {
             showSpinner();
-            const res = await fetch('/api/admin/reports/books/top10');
+            const res = await fetch('/api/admin/reports/books/top10', {
+                credentials: 'include' // Include cookies for session authentication
+            });
             const books = await res.json();
             let html = '<ul class="list-group">';
             books.forEach(b => {
@@ -207,9 +217,9 @@ async function loadDashboardStats() {
     try {
         showSpinner();
         const [customers, books, orders] = await Promise.all([
-            fetch('/api/admin/stats/customers').then(res => res.json()),
-            fetch('/api/admin/stats/books').then(res => res.json()),
-            fetch('/api/admin/stats/pending-orders').then(res => res.json())
+            fetch('/api/admin/stats/customers', { credentials: 'include' }).then(res => res.json()),
+            fetch('/api/admin/stats/books', { credentials: 'include' }).then(res => res.json()),
+            fetch('/api/admin/stats/pending-orders', { credentials: 'include' }).then(res => res.json())
         ]);
 
         document.getElementById('customerCount').textContent = customers.count;
@@ -285,7 +295,8 @@ async function deleteBook(isbn) {
     try {
         showSpinner();
         const response = await fetch(`/api/admin/books/${isbn}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include' // Include cookies for session authentication
         });
 
         if (response.ok) {
@@ -345,6 +356,7 @@ async function updateBook(isbn) {
         const response = await fetch(`/api/admin/books/${isbn}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
             body: JSON.stringify(formData)
         });
 

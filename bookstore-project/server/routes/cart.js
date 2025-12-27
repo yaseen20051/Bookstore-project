@@ -21,7 +21,7 @@ router.get('/', cartController.getCart);
 router.post('/items', validateCartItem, cartController.addItem);
 
 // Update cart item quantity
-router.put('/items/:isbn', validateCartItem, cartController.updateItem);
+router.put('/items/:isbn', cartController.updateItem);
 
 // Remove item from cart
 router.delete('/items/:isbn', cartController.removeItem);

@@ -38,10 +38,6 @@ BEGIN
         UPDATE Books 
         SET quantity_in_stock = quantity_in_stock + NEW.quantity
         WHERE ISBN = NEW.ISBN;
-        
-        UPDATE Publisher_Orders
-        SET confirmation_date = CURRENT_TIMESTAMP
-        WHERE order_id = NEW.order_id;
     END IF;
 END$$
 DELIMITER ;

@@ -22,8 +22,18 @@ function hideSpinner() {
 async function logout() {
     try {
         showSpinner();
-        const response = await fetch('/api/auth/logout', { method: 'POST' });
-        hideSpinner();
+        const response = await fetch('/api/auth/logout', { 
+            method: 'POST',
+            credentials: 'include' // Include cookies for session authentication
+        });
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (e) {
+            // If response is not JSON, continue with status check
+            console.error('Non-JSON response from logout:', response.status);
+        }
         
         if (response.ok) {
             if (window.toast) {
@@ -33,24 +43,35 @@ async function logout() {
                 window.location.href = '/login.html';
             }, 500);
         } else {
+            const errorMsg = data?.error || 'Logout failed';
+            console.error('Logout failed:', response.status, errorMsg);
             if (window.toast) {
-                window.toast.error('Logout failed');
+                window.toast.error(errorMsg);
+            } else {
+                alert(errorMsg);
             }
         }
     } catch (error) {
-        hideSpinner();
         console.error('Logout error:', error);
         if (window.toast) {
-            window.toast.error('An error occurred during logout');
+            window.toast.error('An error occurred during logout: ' + error.message);
+        } else {
+            alert('An error occurred during logout: ' + error.message);
         }
+    } finally {
+        hideSpinner();
     }
 }
+
+// Make logout globally accessible for onclick handlers
+window.logout = logout;
 
 // API helper with better error handling
 async function apiRequest(url, options = {}) {
     try {
         const response = await fetch(url, {
             ...options,
+            credentials: 'include', // Include cookies for session authentication
             headers: {
                 'Content-Type': 'application/json',
                 ...options.headers

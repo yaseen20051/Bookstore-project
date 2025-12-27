@@ -125,9 +125,12 @@ exports.updateItem = async (req, res) => {
         const { isbn } = req.params;
         const { quantity } = req.body;
         
-        if (!quantity || quantity < 1) {
-            return res.status(400).json({ error: 'Invalid quantity' });
+        // Validate input
+        if (!quantity || isNaN(parseInt(quantity)) || parseInt(quantity) < 1) {
+            return res.status(400).json({ error: 'Invalid quantity. Quantity must be a positive integer.' });
         }
+        
+        const validatedQuantity = parseInt(quantity);
         
         // Check stock
         const [books] = await db.query(
@@ -139,7 +142,7 @@ exports.updateItem = async (req, res) => {
             return res.status(404).json({ error: 'Book not found' });
         }
         
-        if (quantity > books[0].quantity_in_stock) {
+        if (validatedQuantity > books[0].quantity_in_stock) {
             return res.status(400).json({ 
                 error: `Only ${books[0].quantity_in_stock} copies available` 
             });
@@ -156,7 +159,7 @@ exports.updateItem = async (req, res) => {
         
         const [result] = await db.query(
             'UPDATE Cart_Items SET quantity = ? WHERE cart_id = ? AND ISBN = ?',
-            [quantity, carts[0].cart_id, isbn]
+            [validatedQuantity, carts[0].cart_id, isbn]
         );
         
         if (result.affectedRows === 0) {

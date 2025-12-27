@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch('/api/cart/checkout', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include', // Include cookies for session authentication
                         body: JSON.stringify(formData)
                     });
     
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch('/api/customer/profile', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include', // Include cookies for session authentication
                         body: JSON.stringify(formData)
                     });
     
@@ -146,10 +148,19 @@ async function loadBooks() {
     try {
         showSpinner();
         const response = await fetch('/api/books');
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load books: ${response.status}`);
+        }
+        
         const books = await response.json();
         displayBooks(books);
     } catch (error) {
         console.error('Error loading books:', error);
+        const container = document.getElementById('booksList');
+        if (container) {
+            container.innerHTML = '<div class="alert alert-danger">Error loading books. Please try again later.</div>';
+        }
     } finally {
         hideSpinner();
     }
@@ -168,13 +179,34 @@ async function searchBooks() {
     try {
         showSpinner();
         const response = await fetch(`/api/books/search?${params}`);
+        
+        if (!response.ok) {
+            throw new Error(`Search failed: ${response.status}`);
+        }
+        
         const books = await response.json();
         displayBooks(books);
     } catch (error) {
         console.error('Error searching books:', error);
+        const container = document.getElementById('booksList');
+        if (container) {
+            container.innerHTML = '<div class="alert alert-danger">Error searching books. Please try again later.</div>';
+        }
     } finally {
         hideSpinner();
     }
+}
+
+// Make functions globally accessible for onclick handlers
+window.loadBooks = loadBooks;
+window.searchBooks = searchBooks;
+
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text == null) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function displayBooks(books) {
@@ -188,21 +220,29 @@ function displayBooks(books) {
         }
 
         books.forEach(book => {
+            // Escape all user-generated content to prevent XSS
+            const escapedISBN = String(book.ISBN || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedTitle = escapeHtml(book.title || 'Untitled');
+            const escapedAuthors = escapeHtml(book.authors || 'N/A');
+            const escapedCategory = escapeHtml(book.category || 'N/A');
+            const price = parseFloat(book.price || 0).toFixed(2);
+            const stock = book.quantity_in_stock || 0;
+            
             const bookCard = `
                 <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         <div class="card-body">
-                            <h5 class="card-title">${book.title}</h5>
+                            <h5 class="card-title">${escapedTitle}</h5>
                             <p class="card-text">
-                                <strong>Author(s):</strong> ${book.authors || 'N/A'}<br>
-                                <strong>Category:</strong> ${book.category}<br>
-                                <strong>Price:</strong> $${book.price}<br>
-                                <strong>Stock:</strong> ${book.quantity_in_stock}
+                                <strong>Author(s):</strong> ${escapedAuthors}<br>
+                                <strong>Category:</strong> ${escapedCategory}<br>
+                                <strong>Price:</strong> $${price}<br>
+                                <strong>Stock:</strong> ${stock}
                             </p>
                             <button class="btn btn-success w-100" 
-                                    onclick="addToCart('${book.ISBN}')"
-                                    ${book.quantity_in_stock === 0 ? 'disabled' : ''}>
-                                ${book.quantity_in_stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                    onclick="window.addToCart('${escapedISBN}')"
+                                    ${stock === 0 ? 'disabled' : ''}>
+                                ${stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                             </button>
                         </div>
                     </div>
@@ -214,33 +254,79 @@ function displayBooks(books) {
 }
 
 async function addToCart(isbn) {
+    console.log('addToCart called with ISBN:', isbn);
     try {
         showSpinner();
+        const requestBody = { isbn, quantity: 1 };
+        console.log('Sending request to /api/cart/items with body:', requestBody);
+        
         const response = await fetch('/api/cart/items', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ isbn, quantity: 1 })
+            credentials: 'include', // Include cookies for session authentication
+            body: JSON.stringify(requestBody)
         });
         
-        const data = await response.json();
+        console.log('Response status:', response.status, response.statusText);
+        
+        const responseText = await response.text();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+            console.log('Response data:', data);
+        } catch (e) {
+            // If response is not JSON, use text
+            console.error('Non-JSON response:', responseText, 'Status:', response.status);
+            if (window.toast) {
+                window.toast.error('Server error: ' + response.status + ' - ' + responseText.substring(0, 100));
+            } else {
+                alert('Server error: ' + response.status + ' - ' + responseText.substring(0, 100));
+            }
+            hideSpinner();
+            return;
+        }
 
         if (response.ok) {
-            toast.success('Book added to cart successfully!');
+            console.log('Successfully added to cart');
+            if (window.toast) {
+                window.toast.success('Book added to cart successfully!');
+            } else {
+                alert('Book added to cart successfully!');
+            }
         } else {
-            toast.error(data.error || 'Failed to add book to cart');
+            const errorMsg = data.error || data.message || data.details || 'Failed to add book to cart';
+            console.error('Add to cart failed:', {
+                status: response.status,
+                error: errorMsg,
+                fullData: data
+            });
+            if (window.toast) {
+                window.toast.error(errorMsg);
+            } else {
+                alert(errorMsg);
+            }
         }
     } catch (error) {
         console.error('Error adding to cart:', error);
-        toast.error('An error occurred while adding to cart');
+        if (window.toast) {
+            window.toast.error('An error occurred while adding to cart: ' + error.message);
+        } else {
+            alert('An error occurred while adding to cart: ' + error.message);
+        }
     } finally {
         hideSpinner();
     }
 }
 
+// Make addToCart globally accessible
+window.addToCart = addToCart;
+
 async function loadCart() {
     try {
         showSpinner();
-        const response = await fetch('/api/cart');
+        const response = await fetch('/api/cart', {
+            credentials: 'include' // Include cookies for session authentication
+        });
         const cart = await response.json();
         
         const container = document.getElementById('cartContent');
@@ -274,7 +360,7 @@ async function loadCart() {
                             <small class="text-muted">Max: ${item.quantity_in_stock}</small>
                         </div>
                         <div class="col-md-2 text-center">
-                            <span class="fw-bold">$${item.subtotal.toFixed(2)}</span>
+                            <span class="fw-bold">$${parseFloat(item.subtotal || 0).toFixed(2)}</span>
                         </div>
                         <div class="col-md-3 text-center">
                             <button class="btn btn-danger btn-sm" onclick="removeFromCart('${item.ISBN}')">
@@ -288,7 +374,7 @@ async function loadCart() {
             itemsHtml += `
                 <div class="row mt-4">
                     <div class="col-md-6">
-                        <h4>Total: $${cart.total.toFixed(2)}</h4>
+                        <h4>Total: $${parseFloat(cart.total || 0).toFixed(2)}</h4>
                     </div>
                     <div class="col-md-6 text-end">
                         <a href="/customer/checkout.html" class="btn btn-success btn-lg">
@@ -321,18 +407,33 @@ async function removeFromCart(isbn) {
     
     try {
         showSpinner();
-        const response = await fetch(`/api/cart/items/${isbn}`, { method: 'DELETE' });
+        const response = await fetch(`/api/cart/items/${isbn}`, { 
+            method: 'DELETE',
+            credentials: 'include' // Include cookies for session authentication
+        });
         const data = await response.json();
         
         if (response.ok) {
-            toast.success('Item removed from cart successfully');
+            if (window.toast) {
+                window.toast.success('Item removed from cart successfully');
+            } else {
+                alert('Item removed from cart successfully');
+            }
             loadCart();
         } else {
-            toast.error(data.error || 'Failed to remove item');
+            if (window.toast) {
+                window.toast.error(data.error || 'Failed to remove item');
+            } else {
+                alert(data.error || 'Failed to remove item');
+            }
         }
     } catch (error) {
         console.error('Error removing item:', error);
-        toast.error('An error occurred while removing the item');
+        if (window.toast) {
+            window.toast.error('An error occurred while removing the item');
+        } else {
+            alert('An error occurred while removing the item');
+        }
     } finally {
         hideSpinner();
     }
@@ -348,6 +449,7 @@ async function updateQuantity(isbn, newQuantity) {
         const response = await fetch(`/api/cart/items/${isbn}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Include cookies for session authentication
             body: JSON.stringify({ quantity: newQuantity })
         });
         const data = await response.json();
@@ -355,11 +457,19 @@ async function updateQuantity(isbn, newQuantity) {
         if (response.ok) {
             loadCart();
         } else {
-            toast.error(data.error || 'Failed to update quantity');
+            if (window.toast) {
+                window.toast.error(data.error || 'Failed to update quantity');
+            } else {
+                alert(data.error || 'Failed to update quantity');
+            }
         }
     } catch (error) {
         console.error('Error updating quantity:', error);
-        toast.error('An error occurred while updating quantity');
+        if (window.toast) {
+            window.toast.error('An error occurred while updating quantity');
+        } else {
+            alert('An error occurred while updating quantity');
+        }
     } finally {
         hideSpinner();
     }
@@ -368,7 +478,11 @@ async function updateQuantity(isbn, newQuantity) {
 async function updateQuantityInput(isbn, quantity) {
     const newQuantity = parseInt(quantity);
     if (isNaN(newQuantity) || newQuantity < 1) {
-        toast.error('Quantity must be at least 1');
+        if (window.toast) {
+            window.toast.error('Quantity must be at least 1');
+        } else {
+            alert('Quantity must be at least 1');
+        }
         loadCart(); // Reset the display
         return;
     }
@@ -383,18 +497,33 @@ async function clearCart() {
     
     try {
         showSpinner();
-        const response = await fetch('/api/cart', { method: 'DELETE' });
+        const response = await fetch('/api/cart', { 
+            method: 'DELETE',
+            credentials: 'include' // Include cookies for session authentication
+        });
         const data = await response.json();
         
         if (response.ok) {
-            toast.success('Cart cleared successfully');
+            if (window.toast) {
+                window.toast.success('Cart cleared successfully');
+            } else {
+                alert('Cart cleared successfully');
+            }
             loadCart();
         } else {
-            toast.error(data.error || 'Failed to clear cart');
+            if (window.toast) {
+                window.toast.error(data.error || 'Failed to clear cart');
+            } else {
+                alert(data.error || 'Failed to clear cart');
+            }
         }
     } catch (error) {
         console.error('Error clearing cart:', error);
-        toast.error('An error occurred while clearing the cart');
+        if (window.toast) {
+            window.toast.error('An error occurred while clearing the cart');
+        } else {
+            alert('An error occurred while clearing the cart');
+        }
     } finally {
         hideSpinner();
     }
@@ -403,7 +532,9 @@ async function clearCart() {
 async function loadOrders() {
     try {
         showSpinner();
-        const response = await fetch('/api/customer/orders');
+        const response = await fetch('/api/customer/orders', {
+            credentials: 'include' // Include cookies for session authentication
+        });
         const orders = await response.json();
         
         const tableBody = document.getElementById('ordersTableBody');
@@ -420,7 +551,7 @@ async function loadOrders() {
                     <tr>
                         <td>${order.sale_id}</td>
                         <td>${new Date(order.sale_date).toLocaleDateString()}</td>
-                        <td>$${order.total_amount.toFixed(2)}</td>
+                        <td>$${parseFloat(order.total_amount || 0).toFixed(2)}</td>
                         <td>${order.items}</td>
                     </tr>
                 `;
@@ -437,7 +568,9 @@ async function loadOrders() {
 async function loadProfile() {
     try {
         showSpinner();
-        const response = await fetch('/api/customer/profile');
+        const response = await fetch('/api/customer/profile', {
+            credentials: 'include' // Include cookies for session authentication
+        });
         const profile = await response.json();
 
         if (response.ok) {
