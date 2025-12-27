@@ -1,6 +1,16 @@
 -- database/schema.sql
-CREATE DATABASE IF NOT EXISTS bookstore_db;
-USE bookstore_db;        
+DROP DATABASE IF EXISTS bookstore_db;
+
+-- Create new database
+CREATE DATABASE bookstore_db;
+
+-- SELECT the database to use
+USE bookstore_db;
+
+-- =====================================================
+-- TABLES
+-- =====================================================
+
 -- Publishers Table
 CREATE TABLE Publishers (
     publisher_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -11,7 +21,7 @@ CREATE TABLE Publishers (
 
 -- Books Table
 CREATE TABLE Books (
-    ISBN VARCHAR(13) PRIMARY KEY,
+    ISBN VARCHAR(20) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     publisher_id INT,
     publication_year INT,
@@ -30,7 +40,7 @@ CREATE TABLE Authors (
 
 -- Book_Authors Junction Table
 CREATE TABLE Book_Authors (
-    ISBN VARCHAR(13),
+    ISBN VARCHAR(20),
     author_id INT,
     PRIMARY KEY (ISBN, author_id),
     FOREIGN KEY (ISBN) REFERENCES Books(ISBN) ON DELETE CASCADE,
@@ -40,7 +50,7 @@ CREATE TABLE Book_Authors (
 -- Publisher Orders Table
 CREATE TABLE Publisher_Orders (
     order_id INT PRIMARY KEY AUTO_INCREMENT,
-    ISBN VARCHAR(13),
+    ISBN VARCHAR(20),  -- ✅ CHANGED FROM VARCHAR(13) TO VARCHAR(20)
     publisher_id INT,
     order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     quantity INT NOT NULL,
@@ -74,7 +84,7 @@ CREATE TABLE Shopping_Carts (
 -- Cart Items Table
 CREATE TABLE Cart_Items (
     cart_id INT,
-    ISBN VARCHAR(13),
+    ISBN VARCHAR(20),
     quantity INT NOT NULL CHECK (quantity > 0),
     added_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (cart_id, ISBN),
@@ -88,13 +98,15 @@ CREATE TABLE Sales (
     customer_id INT,
     sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     total_amount DECIMAL(10,2) NOT NULL,
+    credit_card_last4 VARCHAR(4),
+    card_expiry VARCHAR(7),
     FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
 );
 
 -- Sale Items Table
 CREATE TABLE Sale_Items (
     sale_id INT,
-    ISBN VARCHAR(13),
+    ISBN VARCHAR(20),
     quantity INT NOT NULL,
     price_at_sale DECIMAL(10,2) NOT NULL,
     PRIMARY KEY (sale_id, ISBN),
@@ -102,10 +114,20 @@ CREATE TABLE Sale_Items (
     FOREIGN KEY (ISBN) REFERENCES Books(ISBN)
 );
 
--- Create indexes for performance
+-- =====================================================
+-- INDEXES
+-- =====================================================
+
 CREATE INDEX idx_books_category ON Books(category);
 CREATE INDEX idx_books_publisher ON Books(publisher_id);
 CREATE INDEX idx_book_authors_author ON Book_Authors(author_id);
 CREATE INDEX idx_sales_customer ON Sales(customer_id);
 CREATE INDEX idx_sales_date ON Sales(sale_date);
 CREATE INDEX idx_orders_status ON Publisher_Orders(status);
+
+-- =====================================================
+-- VERIFICATION
+-- =====================================================
+
+SELECT 'Database schema created successfully!' AS Message;
+SHOW TABLES;

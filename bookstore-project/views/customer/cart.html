@@ -19,7 +19,10 @@
     </nav>
 
     <div class="container mt-4">
-        <h2>Your Shopping Cart</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Your Shopping Cart</h2>
+            <button class="btn btn-warning" onclick="clearCart()">Clear Cart</button>
+        </div>
         <div id="cartContent"></div>
     </div>
 
@@ -28,6 +31,7 @@
     </footer>
 
     <script src="/js/common.js"></script>
+    <script src="/js/toast.js"></script>
     <script src="/js/customer.js"></script>
 </body>
 </html>

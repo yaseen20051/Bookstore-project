@@ -11,9 +11,7 @@
         <div class="container">
             <a class="navbar-brand" href="#">Bookstore</a>
             <div>
-                <a href="/customer/profile.html" class="btn btn-outline-light">My Profile</a>
-                <a href="/customer/cart.html" class="btn btn-outline-light">My Cart</a>
-                <a href="/customer/orders.html" class="btn btn-outline-light">My Orders</a>
+                <a href="/customer/cart.html" class="btn btn-outline-light">Cart</a>
                 <button class="btn btn-outline-light" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -49,15 +47,22 @@
             </div>
         </div>
 
+        <!-- Loading indicator -->
+        <div id="loading" class="text-center" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <!-- Error message -->
+        <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+
         <!-- Books List -->
         <div id="booksList" class="row"></div>
     </div>
 
-    <footer class="bg-dark text-white text-center p-3 mt-5">
-        <p>&copy; 2025 Bookstore</p>
-    </footer>
-
     <script src="/js/common.js"></script>
+    <script src="/js/toast.js"></script>
     <script src="/js/customer.js"></script>
 </body>
 </html>

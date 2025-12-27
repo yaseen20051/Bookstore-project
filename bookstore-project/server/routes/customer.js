@@ -1,6 +1,7 @@
 // server/routes/customer.js
 const express = require('express');
 const router = express.Router();
+const { body, validationResult } = require('express-validator');
 const db = require('../../database/connection');
 
 // Middleware to check customer authentication
@@ -29,7 +30,18 @@ router.get('/profile', async (req, res) => {
 });
 
 // Update customer profile
-router.put('/profile', async (req, res) => {
+router.put('/profile', [
+    body('first_name').notEmpty().withMessage('First name is required'),
+    body('last_name').notEmpty().withMessage('Last name is required'),
+    body('email').isEmail().withMessage('Invalid email'),
+    body('phone').optional().isMobilePhone().withMessage('Invalid phone number'),
+    body('shipping_address').notEmpty().withMessage('Shipping address is required'),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
     try {
         const customerId = req.session.user.id;
         const { first_name, last_name, email, phone, shipping_address } = req.body;

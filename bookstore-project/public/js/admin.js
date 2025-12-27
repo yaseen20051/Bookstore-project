@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
     
                 try {
+                    showSpinner();
                     const response = await fetch('/api/admin/books', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -38,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (error) {
                     console.error('Error adding book:', error);
                     alert('An error occurred while adding the book.');
+                } finally {
+                    hideSpinner();
                 }
             });
         }
@@ -80,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadPendingOrders() {
     try {
+        showSpinner();
         const response = await fetch('/api/admin/orders/pending');
         const orders = await response.json();
         
@@ -107,11 +111,14 @@ async function loadPendingOrders() {
         }
     } catch (error) {
         console.error('Error loading orders:', error);
+    } finally {
+        hideSpinner();
     }
 }
 
 async function confirmOrder(orderId) {
     try {
+        showSpinner();
         const response = await fetch(`/api/admin/orders/${orderId}/confirm`, {
             method: 'PUT'
         });
@@ -124,6 +131,8 @@ async function confirmOrder(orderId) {
         }
     } catch (error) {
         console.error('Error confirming order:', error);
+    } finally {
+        hideSpinner();
     }
 }
 
@@ -132,6 +141,7 @@ async function loadPreviousMonthSales() {
     const container = document.getElementById('prevMonthSales');
     if(container){
         try {
+            showSpinner();
             const res = await fetch('/api/admin/reports/sales/previous-month');
             const data = await res.json();
             container.innerHTML = `
@@ -139,6 +149,9 @@ async function loadPreviousMonthSales() {
                 <p>Number of Orders: ${data.num_orders || 0}</p>
             `;
         } catch (err) { container.innerHTML = '<p>Error loading report.</p>'; }
+        finally {
+            hideSpinner();
+        }
     }
 }
 
@@ -146,6 +159,7 @@ async function loadTopCustomers() {
     const container = document.getElementById('topCustomers');
     if(container){
         try {
+            showSpinner();
             const res = await fetch('/api/admin/reports/customers/top5');
             const customers = await res.json();
             let html = '<ul class="list-group">';
@@ -159,6 +173,9 @@ async function loadTopCustomers() {
             html += '</ul>';
             container.innerHTML = html;
         } catch (err) { container.innerHTML = '<p>Error loading report.</p>'; }
+        finally {
+            hideSpinner();
+        }
     }
 }
 
@@ -166,6 +183,7 @@ async function loadTopBooks() {
     const container = document.getElementById('topBooks');
     if(container){
         try {
+            showSpinner();
             const res = await fetch('/api/admin/reports/books/top10');
             const books = await res.json();
             let html = '<ul class="list-group">';
@@ -179,11 +197,15 @@ async function loadTopBooks() {
             html += '</ul>';
             container.innerHTML = html;
         } catch (err) { container.innerHTML = '<p>Error loading report.</p>'; }
+        finally {
+            hideSpinner();
+        }
     }
 }
 
 async function loadDashboardStats() {
     try {
+        showSpinner();
         const [customers, books, orders] = await Promise.all([
             fetch('/api/admin/stats/customers').then(res => res.json()),
             fetch('/api/admin/stats/books').then(res => res.json()),
@@ -196,11 +218,14 @@ async function loadDashboardStats() {
 
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
+    } finally {
+        hideSpinner();
     }
 }
 
 async function loadAllBooks() {
     try {
+        showSpinner();
         const response = await fetch('/api/books');
         const books = await response.json();
         
@@ -217,7 +242,7 @@ async function loadAllBooks() {
                         <td>${book.quantity_in_stock}</td>
                         <td>
                             <a href="/admin/edit-book.html?isbn=${book.ISBN}" class="btn btn-primary btn-sm">Edit</a>
-                            <button class="btn btn-danger btn-sm" onclick="deleteBook('${book.ISBN}')">Delete</button>
+                            <button class="btn btn-danger btn-sm" onclick="showDeleteConfirmationModal('${book.ISBN}')">Delete</button>
                         </td>
                     </tr>
                 `;
@@ -226,15 +251,39 @@ async function loadAllBooks() {
         }
     } catch (error) {
         console.error('Error loading books:', error);
+    } finally {
+        hideSpinner();
     }
 }
 
-async function deleteBook(isbn) {
-    if (!confirm('Are you sure you want to delete this book?')) {
-        return;
-    }
+let isbnToDelete = null; // Variable to store the ISBN of the book to be deleted
 
+function showDeleteConfirmationModal(isbn) {
+    isbnToDelete = isbn;
+    document.getElementById('deleteIsbn').textContent = isbn;
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+    deleteModal.show();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing DOMContentLoaded logic ...
+
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (isbnToDelete) {
+                deleteBook(isbnToDelete);
+                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmationModal'));
+                deleteModal.hide();
+            }
+        });
+    }
+});
+
+
+async function deleteBook(isbn) {
     try {
+        showSpinner();
         const response = await fetch(`/api/admin/books/${isbn}`, {
             method: 'DELETE'
         });
@@ -249,11 +298,14 @@ async function deleteBook(isbn) {
     } catch (error) {
         console.error('Error deleting book:', error);
         alert('An error occurred while deleting the book.');
+    } finally {
+        hideSpinner();
     }
 }
 
 async function loadBookForEdit(isbn) {
     try {
+        showSpinner();
         const response = await fetch(`/api/books/${isbn}`);
         const book = await response.json();
 
@@ -272,6 +324,8 @@ async function loadBookForEdit(isbn) {
     } catch (error) {
         console.error('Error loading book:', error);
         alert('An error occurred while loading book details.');
+    } finally {
+        hideSpinner();
     }
 }
 
@@ -287,6 +341,7 @@ async function updateBook(isbn) {
     };
 
     try {
+        showSpinner();
         const response = await fetch(`/api/admin/books/${isbn}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -303,5 +358,7 @@ async function updateBook(isbn) {
     } catch (error) {
         console.error('Error updating book:', error);
         alert('An error occurred while updating the book.');
+    } finally {
+        hideSpinner();
     }
 }

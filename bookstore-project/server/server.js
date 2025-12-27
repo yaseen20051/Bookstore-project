@@ -4,25 +4,35 @@ const session = require('express-session');
 const path = require('path');
 require('dotenv').config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const config = require('./config');
+const { securityHeaders, apiLimiter, sanitizeInput } = require('./middleware/security');
+const { errorHandler } = require('./middleware/errorHandler');
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const app = express();
+const PORT = config.port;
+
+// Security middleware
+app.use(securityHeaders);
+app.use(sanitizeInput);
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static files
 app.use(express.static('public'));
 app.use(express.static(path.join(__dirname, '../views')));
 
 // Session configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET,
+    secret: config.session.secret,
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
-        httpOnly: true
-    }
+    cookie: config.session
 }));
+
+// Apply rate limiting to API routes
+app.use('/api', apiLimiter);
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -50,13 +60,41 @@ app.get('/register', (req, res) => {
     res.sendFile(path.join(__dirname, '../views/register.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: 'Something went wrong!' });
+app.get('/admin/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '../views/admin/login.html'));
+});
+
+// Global error handler
+app.use(errorHandler);
+
+// Handle 404 for API routes
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: {
+            code: 'NOT_FOUND',
+            message: 'API endpoint not found'
+        }
+    });
 });
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`
+╔════════════════════════════════════════════╗
+║     📚 Bookstore Server Started           ║
+╠════════════════════════════════════════════╣
+║  🌐 URL: http://localhost:${PORT}${' '.repeat(Math.max(0, 18 - PORT.toString().length))} ║
+║  🔧 Environment: ${config.nodeEnv.padEnd(23)} ║
+║  🛡️  Security: Enabled${' '.repeat(18)} ║
+╚════════════════════════════════════════════╝
+    `);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        console.log('HTTP server closed');
+    });
 });
